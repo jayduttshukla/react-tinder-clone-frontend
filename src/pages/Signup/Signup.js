@@ -11,9 +11,13 @@ import Container from '@material-ui/core/Container';
 import { useForm } from "react-hook-form";
 import logo from '../../assets/logo.png';
 import { useHistory, Link } from "react-router-dom";
-import axios from './../../axios';
+import axiosMiddleware from './../../axios';
+import axios from 'axios';
 import jwt from 'jwt-decode';
 import { AuthContext } from "../../App";
+import { DropzoneDialog } from "material-ui-dropzone";
+import config from '../../config';
+
 
 const useStyles = makeStyles((theme) => ({
 paper: {
@@ -46,39 +50,77 @@ function Signup() {
   let history = useHistory();
   const { register, handleSubmit, formState: { errors } } = useForm();
   const [newError , setNewError] = useState(null);
-  const [isLoading , setIsLoading] = useState(false)
+  const [isLoading , setIsLoading] = useState(false);
+  const [openImgUp, setOpenImgUp] = React.useState(false);
+  const [imageFile, setImageFile] = useState(null)
+ 
+    const handleOpenBox = () => {
+        setOpenImgUp(true);
+  };
+
+  const handleCloseBox = () => {
+    setOpenImgUp(false);
+  };
+
+  const handleSave = files => {
+    setImageFile(files[0]);
+    setNewError(null)
+    handleCloseBox();
+  };
   const onSubmit = data => {
       
-    axios.post('/api/users/signup', {
-        name: data.name,
-        email: data.email,
-        password: data.password
-      })
-      .then(resJson => {
-        if(resJson.data.status === 1) {
-             const token = resJson.data.token;
-             const user = jwt(token);
-             const dataMain = {
-                 user: user,
-                 token: token
-             }
-             setIsLoading(false);
-             dispatch({
-                 type: "LOGIN",
-                 payload: dataMain
-             })
-             history.push({
-                pathname: "/cards"
-            });
-        } else {
-            setIsLoading(false);
-            setNewError(resJson.data.msg)
-        }
-        
-      }, (error) => {
-        // console.log(error);
-        // setNewError(error)
-        })
+    if(imageFile) {
+        axiosMiddleware.post('/api/users/signup', {
+            name: data.name,
+            email: data.email,
+            password: data.password
+          })
+          .then(resJson => {
+            if(resJson.data.status === 1) {
+                const token = resJson.data.token;
+                const user = jwt(token);
+                var bodyFormData = new FormData();
+                bodyFormData.append('imageFile', imageFile);
+                bodyFormData.append('userId', user._id);
+                axios({
+                    method: "post",
+                    url: config.BASE_URL + '/api/users/upload-dp',
+                    data: bodyFormData,
+                    headers: { "Content-Type": "multipart/form-data" },
+                  })
+                    .then(function (response) {
+                        const dataMain = {
+                            user: user,
+                            token: token
+                        }
+                        setIsLoading(false);
+                        dispatch({
+                            type: "LOGIN",
+                            payload: dataMain
+                        })
+                        history.push({
+                           pathname: "/cards"
+                       });;
+                    })
+                    .catch(function (response) {
+                      //handle error
+                      console.log(response);
+                    }); 
+                 
+                 
+            } else {
+                setIsLoading(false);
+                setNewError(resJson.data.msg)
+            }
+            
+          }, (error) => {
+            // console.log(error);
+            // setNewError(error)
+            })
+    }
+    else {
+        setNewError('You must upload an image!')
+    }
     // history.push({
     //     pathname: "/cards"
     // });
@@ -147,6 +189,30 @@ function Signup() {
                         })}
                         helperText={(errors.password?.type === "required" &&
                         "Password is required")}
+                    />
+                    <Button
+                        variant="contained"
+                        color="secondary"
+                        // size="small"
+                        style={{marginTop: '15px'}}
+                        onClick={handleOpenBox}
+                    >
+                        Add Image
+                    </Button>
+                    <p>{imageFile ? imageFile.name : null}</p>
+                    <DropzoneDialog
+                        open={openImgUp}
+                        filesLimit={1}
+                        onSave={handleSave}
+                        acceptedFiles={["image/jpeg", "image/png", "image/bmp"]}
+                        showPreviews={true}
+                        maxFileSize={5000000}
+                        onClose={handleCloseBox}
+                        cancelButtonText={"Cancel"}
+                        submitButtonText={"Submit"}
+                        showFileNamesInPreview={true}
+                        dialogTitle={"Upload Image"}
+                        dropzoneText={"Drop or click to browse for image"}
                     />
                     <p style={{color:"red"}}>{newError}</p>
                     <Button

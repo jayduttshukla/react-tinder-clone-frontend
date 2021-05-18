@@ -12,21 +12,37 @@ import CloseIcon from '@material-ui/icons/Close';
 import StarRateIcon from '@material-ui/icons/StarRate';
 import FavoriteIcon from '@material-ui/icons/Favorite';
 import FlashOnIcon from '@material-ui/icons/FlashOn';
+import config from '../../config';
+
 const alreadyRemoved = []
 let childRefs;
 function TinderCards() {
     let history = useHistory();
-    const { isAuthenticated } = React.useContext(AuthContext);
+    const { isAuthenticated, state } = React.useContext(AuthContext);
     const [people, setPeople] = useState([]);
+    const [loggeInUser, setLoggedInUser] = useState(JSON.parse(localStorage.getItem('user')));
     const [childRefList, setChildRefList] = useState([]);
 
     useEffect(() => {
       async function fetchData() {
-          const req = await axios.get('/api/tinder/cards');
-          setPeople(req.data);  
+          if(loggeInUser) {  
+            axios.post('/api/users/getSuggestedCards', {userId: loggeInUser._id}).then(response => {
+                let data = response.data.data;
+                if(response.data.status === 1) {
+                    data.map((item) => {
+                        console.log('item.imgUrl ', item.imgUrl)
+                        item.imgUrl = config.BASE_URL + '/' + item.imgUrl.replace(/\\/g, "/");
+                    })
+                setPeople(data);
+                childRefs = () => Array(data.length).fill(0).map(i => React.createRef())
+                setChildRefList(childRefs);  
+                }
+            })
+          }
+         
       } 
       console.log('isAuthenticated ', isAuthenticated)
-      fetchData();
+
       if(localStorage.getItem('token')){
         fetchData();
       } else {
@@ -34,17 +50,13 @@ function TinderCards() {
       }
     }, [])
    
-    useEffect(() => {
-        childRefs = () => Array(people.length).fill(0).map(i => React.createRef())
-        setChildRefList(childRefs);
-    }, [people]);
-    const swiped = (dir, nameToDelete) =>{
+    const swiped = (dir, id) =>{
         if(dir === "right") {
             // Right swipe
-            console.log(`interested in ${nameToDelete}`)
+            console.log(`interested in ${id}`)
         } else {
             // Left swipe
-            console.log(`not interested in ${nameToDelete}`)
+            console.log(`not interested in ${id}`)
         }
         // setLastDirection(dir)
     }
@@ -72,7 +84,7 @@ function TinderCards() {
                             className="swipe"
                             key={person.name}
                             preventSwipe={['down']}
-                            onSwipe={(dir)=> swiped(dir, person.name)}
+                            onSwipe={(dir)=> swiped(dir, person._id)}
                             onCardLeftScreen={()=> outOfFrame(person.name)}
                         >
                             <div style={{backgroundImage: `url(${person.imgUrl})`}} className="tinder-card">

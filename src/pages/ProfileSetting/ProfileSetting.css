@@ -1,5 +1,23 @@
 .profile-setting-container{
     padding: 0px 15px;
     position: relative;
-    
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+img.profile_image{
+    width: 225px;
+    height: 225px;
+    object-fit: cover;
+    border-radius: 100%;
+    margin-bottom: 30px;
+    margin-top: 30px;
+}
+p.profile_name,p.profile_email{
+    font-size: 30px;
+    margin-bottom: 10px;
+}
+p.profile_email{
+    font-size: 20px;
+    margin-bottom: 30px;
 }
